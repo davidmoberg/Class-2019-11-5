@@ -1,0 +1,42 @@
+---
+title: "11-05"
+author: "David Moberg"
+date: "11/5/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(moderndive)
+library(babynames)
+library(skimr)
+library(infer)
+library(tidyverse)
+```
+
+```{r}
+plotData<-evals%>%
+  rep_sample_n(size = 463, replace = TRUE, reps = 1000)%>%
+  group_by(replicate)%>%
+  summarise(mean_age = mean(age))%>%
+  mutate(lower = quantile(mean_age, probs = .025),
+            upper = quantile(mean_age, probs = .975))
+
+
+plotData%>%ggplot(aes(x=mean_age))+geom_histogram(bins = 20)
+```
+
+Calculate a confidence interval for the coefficient of age in your model
+```{r}
+evals%>%
+  rep_sample_n(size = 463, replace = TRUE, reps = 1000)%>%
+  group_by(replicate)%>%
+  nest()%>%
+  mutate(results = map(data, ~lm(score ~ age + gender, data = .x)))%>%
+  mutate(coefficients = map(results, ~coef(.x)))%>%
+  mutate(age_coef = map_dbl(coefficients, ~pluck(.x, "age")))%>%
+  unnest(age_coef)%>%
+  ungroup()%>%
+  summarize(lower = quantile(age_coef, probs = .025),
+            upper = quantile(age_coef, probs = .975))
+```
